@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+osdag-env/
+venv/
+.env/
+
+# OCC / build
+*.brep
+*.step
+*.stp
+
+# OS
+.DS_Store
+Thumbs.db
