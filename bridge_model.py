@@ -28,8 +28,8 @@ from validation import validate_bridge_inputs
 span_length_L = 25000
 girder_section_d = 900
 girder_section_bf = 300
-girder_section_tf = 16
-girder_section_tw = 10
+girder_section_tf = 160
+girder_section_tw = 100
 num_girders = 5           # number of main girders (>=3)
 girder_spacing = 2750        # center-to-center spacing (mm)
 
@@ -89,6 +89,7 @@ def build_cross_bracing():
         girder_spacing,
         num_girders,
         girder_section_d,
+        girder_section_tf,
         cross_bracing_spacing,
         cross_bracing_thickness,
     )

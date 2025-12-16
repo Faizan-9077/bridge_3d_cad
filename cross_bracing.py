@@ -1,11 +1,10 @@
 # cross_bracing.py
 # X-type cross bracing for steel girder bridge
-# Stable, parametric, OCC-safe implementation
+# Simple visual-stable implementation (length * 0.92)
 
 from OCC.Core.gp import gp_Pnt, gp_Vec, gp_Trsf, gp_Ax1, gp_Dir
 from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
-import math
 
 
 # ------------------------------------------------------------
@@ -15,19 +14,24 @@ import math
 def make_diagonal_member(p1, p2, thickness):
     """
     Creates a diagonal steel bracing member between two points.
+    Length is NOT reduced.
+    Member is shifted slightly along its direction for visual centering.
     """
 
     # Vector from p1 to p2
     vec = gp_Vec(p1, p2)
     length = vec.Magnitude()
 
-    if length < 1e-6:
-        return None
+    
 
-    # 1. Create box along X-axis at origin
-    box = BRepPrimAPI_MakeBox(length, thickness, thickness).Shape()
+    # 1. Create full-length box along X-axis
+    box = BRepPrimAPI_MakeBox(
+        length,
+        thickness,
+        thickness
+    ).Shape()
 
-    # 2. Rotate box to align with p1 -> p2 direction
+    # 2. Rotate box to align with p1 -> p2
     x_dir = gp_Dir(1, 0, 0)
     target_dir = gp_Dir(vec)
 
@@ -43,13 +47,24 @@ def make_diagonal_member(p1, p2, thickness):
 
     box = BRepBuilderAPI_Transform(box, trsf_rot).Shape()
 
-    # 3. Translate box to starting point p1
+    # 3. Shift slightly along diagonal direction (visual fix)
+    dir_vec = gp_Vec(vec.X(), vec.Y(), vec.Z())
+    dir_vec.Normalize()
+    dir_vec.Multiply(thickness)   # adjust if needed
+
     trsf_trans = gp_Trsf()
-    trsf_trans.SetTranslation(gp_Vec(p1.X(), p1.Y(), p1.Z()))
+    trsf_trans.SetTranslation(
+        gp_Vec(
+            p1.X() + dir_vec.X(),
+            p1.Y() + dir_vec.Y(),
+            p1.Z() + dir_vec.Z()
+        )
+    )
 
     box = BRepBuilderAPI_Transform(box, trsf_trans).Shape()
 
     return box
+
 
 
 # ------------------------------------------------------------
@@ -61,6 +76,7 @@ def create_x_bracing_between_girders(
     y1,
     y2,
     girder_depth,
+    flange_thickness,
     thickness
 ):
     """
@@ -69,8 +85,9 @@ def create_x_bracing_between_girders(
 
     braces = []
 
-    z_bottom = 0.0
-    z_top = girder_depth
+    # Web–flange junction levels
+    z_bottom = flange_thickness
+    z_top = girder_depth - flange_thickness
 
     # Diagonal /
     p1 = gp_Pnt(x, y1, z_bottom)
@@ -99,6 +116,7 @@ def create_cross_bracing(
     girder_spacing,
     n_girders,
     girder_depth,
+    flange_thickness,
     bracing_spacing,
     thickness
 ):
@@ -109,9 +127,9 @@ def create_cross_bracing(
     cross_bracings = []
 
     total_width = (n_girders - 1) * girder_spacing
-    n_frames = int(span_length / bracing_spacing) + 1
+    n_braces = int(span_length / bracing_spacing) + 1
 
-    for i in range(n_frames):
+    for i in range(n_braces):
         x = i * bracing_spacing
 
         for g in range(n_girders - 1):
@@ -124,6 +142,7 @@ def create_cross_bracing(
                     y1,
                     y2,
                     girder_depth,
+                    flange_thickness,
                     thickness
                 )
             )
