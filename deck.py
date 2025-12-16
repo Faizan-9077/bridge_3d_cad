@@ -1,7 +1,9 @@
 # deck.py
+
 from OCC.Core.gp import gp_Trsf, gp_Vec
-from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+
+from draw_rectangular_prism import create_rectangular_prism
 
 
 def create_deck_slab(
@@ -18,17 +20,18 @@ def create_deck_slab(
 
     total_width = (num_girders - 1) * girder_spacing + 2 * deck_overhang
 
-    slab = BRepPrimAPI_MakeBox(
+    # Use existing rectangular prism factory
+    slab = create_rectangular_prism(
         span_length,
         total_width,
         deck_thickness
-    ).Shape()
+    )
 
     trsf = gp_Trsf()
     trsf.SetTranslation(
         gp_Vec(
+            span_length/2,
             0,
-            -total_width / 2,
             girder_depth
         )
     )
