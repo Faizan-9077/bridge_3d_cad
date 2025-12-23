@@ -33,21 +33,26 @@ girder_section_d = 900
 girder_section_bf = 300
 girder_section_tf = 160
 girder_section_tw = 100
-num_girders = 5           # number of main girders (>=3)
+num_girders = 8           # number of main girders (>=3)
 girder_spacing = 2750        # center-to-center spacing (mm)
 
 #deck parameters
-deck_thickness = 200
+deck_thickness = 400
 deck_overhang = 3000   #extra slab beyond outer girders
 
-# carriageway & footpath (mm)
-carriageway_width = 10500
-footpath_width = 1120   # footpath on ONE side only
+
+#footpath 
+footpath_width = 2000   # footpath on ONE side only
+
+#Derived widths
+total_deck_width = (num_girders - 1) * girder_spacing + 2 * deck_overhang
+carriageway_width = total_deck_width - footpath_width
+
 
 
 #cross bracing parameters
 cross_bracing_spacing = 6000 
-cross_bracing_thickness = 80
+cross_bracing_thickness = 100
 
 # crash barrier parameters (mm)
 crash_barrier_base_width = 600

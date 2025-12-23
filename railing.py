@@ -13,9 +13,7 @@ def translate(shape, x=0, y=0, z=0):
     return BRepBuilderAPI_Transform(shape, trsf, True).Shape()
 
 def create_railing(length, width, height):
-    """
-    Creates a simple rectangular crash barrier solid
-    """
+    
     railing = create_rectangular_prism(
         length,
         width,
@@ -24,9 +22,7 @@ def create_railing(length, width, height):
     return railing
 
 def place_railing(barrier, x=0, y=0, z=0):
-    """
-    Places the crash barrier at given x, y, z location
-    """
+    
     placed_railing = translate(
         barrier,
         x=x,

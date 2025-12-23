@@ -67,6 +67,8 @@ def make_diagonal_member(p1, p2, thickness):
 
 
 
+
+
 # ------------------------------------------------------------
 # X bracing between two adjacent girders
 # ------------------------------------------------------------
