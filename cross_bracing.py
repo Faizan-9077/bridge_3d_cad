@@ -67,6 +67,32 @@ def make_diagonal_member(p1, p2, thickness):
 
 
 
+def make_horizontal_member_y(x, y1, y2, z, thickness):
+    """
+    Creates a horizontal bracing member along Y-direction
+    between y1 and y2 at given x and z.
+    """
+
+    length = abs(y2 - y1)
+
+    box = BRepPrimAPI_MakeBox(
+        thickness,   # X thickness
+        length,      # Y length
+        thickness    # Z thickness
+    ).Shape()
+
+    trsf = gp_Trsf()
+    trsf.SetTranslation(
+        gp_Vec(
+            x - thickness / 2,
+            min(y1, y2),
+            z - thickness / 2
+        )
+    )
+
+    box = BRepBuilderAPI_Transform(box, trsf).Shape()
+
+    return box
 
 
 # ------------------------------------------------------------
@@ -101,6 +127,28 @@ def create_x_bracing_between_girders(
     p4 = gp_Pnt(x, y2, z_bottom)
     d2 = make_diagonal_member(p3, p4, thickness)
 
+    # Bottom horizontal member
+    bottom_member = make_horizontal_member_y(
+        x,
+        y1,
+        y2,
+        z_bottom,
+        thickness
+    )
+
+    braces.append(bottom_member)
+
+    # Top horizontal member
+    top_member = make_horizontal_member_y(
+        x,
+        y1,
+        y2,
+        z_top,
+        thickness
+    )
+    braces.append(top_member)
+
+
     if d1:
         braces.append(d1)
     if d2:
@@ -108,6 +156,7 @@ def create_x_bracing_between_girders(
 
     return braces
 
+    
 
 # ------------------------------------------------------------
 # Build cross bracing along entire bridge span
