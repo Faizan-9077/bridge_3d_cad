@@ -30,8 +30,8 @@ from crash_barriers import create_crash_barrier, place_crash_barrier
 #girders parameters
 span_length_L = 25000
 girder_section_d = 900
-girder_section_bf = 300
-girder_section_tf = 160
+girder_section_bf = 500
+girder_section_tf = 260
 girder_section_tw = 100
 num_girders = 8           # number of main girders (>=3)
 girder_spacing = 2750        # center-to-center spacing (mm)
@@ -51,7 +51,7 @@ carriageway_width = total_deck_width - footpath_width
 
 
 #cross bracing parameters
-cross_bracing_spacing = 6000 
+cross_bracing_spacing = 4000 
 cross_bracing_thickness = 100
 
 # crash barrier parameters (mm)
@@ -114,6 +114,7 @@ def build_cross_bracing():
         girder_section_tf,
         cross_bracing_spacing,
         cross_bracing_thickness,
+        girder_section_bf
     )
     return cross_bracings
 

@@ -46,19 +46,19 @@ def create_i_section(length, width, depth, flange_thickness, web_thickness):
     return i_section_solid
 
 
-if __name__ == "__main__":
-    length = 1000.0
-    width = 100.0  # Width of the I-section
-    height = 200.0  # Height of the I-section
-    flange_thickness = 10.0  # Thickness of the flanges
-    web_thickness = 5.0  # Thickness of the web
+# if __name__ == "__main__":
+#     length = 1000.0
+#     width = 100.0  # Width of the I-section
+#     height = 200.0  # Height of the I-section
+#     flange_thickness = 10.0  # Thickness of the flanges
+#     web_thickness = 5.0  # Thickness of the web
 
-    i_section = create_i_section(length, width, height, flange_thickness, web_thickness)
+#     i_section = create_i_section(length, width, height, flange_thickness, web_thickness)
 
-    # Visualization
-    display, start_display, add_menu, add_function_to_menu = init_display()
+#     # Visualization
+#     display, start_display, add_menu, add_function_to_menu = init_display()
 
-    # Show the I-section model
-    display.DisplayShape(i_section, update=True)
-    display.FitAll()
-    start_display()
+#     # Show the I-section model
+#     display.DisplayShape(i_section, update=True)
+#     display.FitAll()
+#     start_display()
