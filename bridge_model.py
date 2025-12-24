@@ -53,6 +53,7 @@ carriageway_width = total_deck_width - footpath_width
 #cross bracing parameters
 cross_bracing_spacing = 4000 
 cross_bracing_thickness = 100
+bracing_type = "K"
 
 # crash barrier parameters (mm)
 crash_barrier_base_width = 600
@@ -114,7 +115,8 @@ def build_cross_bracing():
         girder_section_tf,
         cross_bracing_spacing,
         cross_bracing_thickness,
-        girder_section_bf
+        girder_section_bf,
+        bracing_type
     )
     return cross_bracings
 

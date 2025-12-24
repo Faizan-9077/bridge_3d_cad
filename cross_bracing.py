@@ -127,6 +127,10 @@ def make_horizontal_member_y(y_left_girder_left_edge, y_right_girder_left_edge, 
 # X bracing between two adjacent girders
 # ------------------------------------------------------------
 
+# ------------------------------------------------------------
+# X bracing between two adjacent girders
+# ------------------------------------------------------------
+
 def create_x_bracing_between_girders(
     x,
     y_left,
@@ -199,8 +203,85 @@ def create_x_bracing_between_girders(
 
     return braces
 
-    
 
+# ------------------------------------------------------------
+# K bracing between two adjacent girders
+# ------------------------------------------------------------
+
+def create_k_bracing_between_girders(
+    x,
+    y_left,
+    y_right,
+    girder_depth,
+    flange_thickness,
+    thickness,
+    flange_width
+):
+    
+    """
+    Creates K-type cross bracing between two adjacent girders.
+    Diagonals connect from left/right girder webs to the midpoint of bottom chord.
+    Horizontal chords span from flange edge to flange edge.
+    
+    Args:
+        x: X-position along bridge span
+        y_left: Y-coordinate of LEFT girder's LEFT edge (where flange starts)
+        y_right: Y-coordinate of RIGHT girder's LEFT edge (where flange starts)
+        girder_depth: Total depth of girder
+        flange_thickness: Thickness of flanges
+        thickness: Thickness of bracing members
+        flange_width: Width (breadth) of girder flange
+    """
+
+    braces = []
+
+    # Web–flange junction levels (where web starts/ends)
+    z_bottom = flange_thickness/2
+    z_top = girder_depth - flange_thickness/2
+
+    # Web positions (right edge of left girder, left edge of right girder)
+    y_left_diagonal = y_left + flange_width 
+    y_right_diagonal = y_right
+    
+    # Midpoint of bottom chord (horizontally)
+    y_mid = (y_left_diagonal + y_right_diagonal) / 2
+
+    # Left diagonal - connects from left girder top to midpoint of bottom chord
+    p1 = gp_Pnt(x, y_left_diagonal, z_top)
+    p2 = gp_Pnt(x, y_mid, z_bottom)
+    d1 = make_diagonal_member(p1, p2, thickness)
+
+    # Right diagonal - connects from right girder top to midpoint of bottom chord
+    p3 = gp_Pnt(x, y_right_diagonal, z_top)
+    p4 = gp_Pnt(x, y_mid, z_bottom)
+    d2 = make_diagonal_member(p3, p4, thickness)
+
+    # Bottom horizontal chord - spans from flange edge to flange edge
+    bottom_member = make_horizontal_member_y(
+        y_left,
+        y_right,
+        x,
+        z_bottom,
+        thickness,
+        flange_width
+    )
+    braces.append(bottom_member)
+
+    # Top horizontal chord - spans from flange edge to flange edge
+    top_member = make_horizontal_member_y(
+        y_left,
+        y_right,
+        x,
+        z_top,
+        thickness,
+        flange_width
+    )
+    braces.append(top_member)
+
+    braces.append(d1)
+    braces.append(d2)
+
+    return braces
 # ------------------------------------------------------------
 # Build cross bracing along entire bridge span
 # ------------------------------------------------------------
@@ -212,7 +293,8 @@ def create_cross_bracing(
     flange_thickness,
     bracing_spacing,
     thickness,
-    flange_width
+    flange_width,
+    bracing_type
 ):
     """
     Builds X-type cross bracing along the bridge span.
@@ -253,16 +335,36 @@ def create_cross_bracing(
             y_left = (g * girder_spacing) - (total_width / 2)
             y_right = ((g + 1) * girder_spacing) - (total_width / 2)
 
-            cross_bracings.extend(
-                create_x_bracing_between_girders(
-                    x, 
-                    y_left,      # Left girder's LEFT flange edge
-                    y_right,     # Right girder's LEFT flange edge
-                    girder_depth,
-                    flange_thickness,
-                    thickness,
-                    flange_width
+            if bracing_type.upper() == "X":
+                cross_bracings.extend(
+                    create_x_bracing_between_girders(
+                        x, 
+                        y_left,      # Left girder's LEFT flange edge
+                        y_right,     # Right girder's LEFT flange edge
+                        girder_depth,
+                        flange_thickness,
+                        thickness,
+                        flange_width
+                    )
                 )
-            )
+
+            elif bracing_type.upper() == "K":
+                cross_bracings.extend(
+                    create_k_bracing_between_girders(
+                        x,
+                        y_left,
+                        y_right,
+                        girder_depth,
+                        flange_thickness,
+                        thickness,
+                        flange_width
+                    )
+                )
+
+            else:
+                raise ValueError(
+                    f"Unsupported bracing type: {bracing_type}. Use 'X' or 'K'."
+                )
+                
 
     return cross_bracings
