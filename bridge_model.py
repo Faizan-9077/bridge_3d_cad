@@ -10,10 +10,13 @@ from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 
 from deck import create_deck_slab
 from draw_i_section import create_i_section
-from cross_bracing import create_cross_bracing
 from validation import validate_bridge_inputs
 from railing import create_railing, place_railing
-from crash_barriers import create_crash_barrier, place_crash_barrier
+from cross_bracing import (
+    create_x_bracing_between_girders,
+    create_k_bracing_between_girders
+)
+from crash_barriers import place_crash_barrier, create_crash_barrier
 
 # =====================
 # PARAMETERS (mm)
@@ -42,7 +45,12 @@ carriageway_width = (num_girders - 1) * girder_spacing
 # cross bracing parameters
 cross_bracing_spacing = 4000 
 cross_bracing_thickness = 100
-bracing_type = "X"
+bracing_type = "K"
+# X bracing option: "NONE" | "LOWER" | "UPPER" | "BOTH"
+x_bracket_option = "BOTH"
+
+# K bracing option: top bracket optional
+k_top_bracket = False
 
 # crash barrier parameters (mm)
 crash_barrier_base_width = 500
@@ -94,19 +102,57 @@ def build_deck():
 
 
 def build_cross_bracing():
-    cross_bracings = create_cross_bracing(
-        span_length_L,
-        girder_spacing,
-        num_girders,
-        girder_section_d,
-        girder_section_tf,
-        cross_bracing_spacing,
-        cross_bracing_thickness,
-        girder_section_bf,
-        bracing_type
-    )
-    return cross_bracings
+    cross_bracings = []
 
+    # Number of bracing frames along span
+    n = int(span_length_L / cross_bracing_spacing) - 1
+    n_total = n + 2
+    spacing = span_length_L / (n_total - 1)
+    x_positions = [i * spacing for i in range(n_total)]
+
+    total_width = (num_girders - 1) * girder_spacing
+
+    for x in x_positions:
+        for g in range(num_girders - 1):
+
+            y_left = (g * girder_spacing) - total_width / 2
+            y_right = ((g + 1) * girder_spacing) - total_width / 2
+
+            if bracing_type == "X":
+                cross_bracings.extend(
+                    create_x_bracing_between_girders(
+                        x=x,
+                        y_left=y_left,
+                        y_right=y_right,
+                        girder_depth=girder_section_d,
+                        flange_thickness=girder_section_tf,
+                        thickness=cross_bracing_thickness,
+                        flange_width=girder_section_bf,
+                        bracket_option=x_bracket_option
+                    )
+                )
+
+            elif bracing_type == "K":
+                cross_bracings.extend(
+                    create_k_bracing_between_girders(
+                        x=x,
+                        y_left=y_left,
+                        y_right=y_right,
+                        girder_depth=girder_section_d,
+                        flange_thickness=girder_section_tf,
+                        thickness=cross_bracing_thickness,
+                        flange_width=girder_section_bf,
+                        top_bracket=k_top_bracket
+                    )
+                )
+
+            else:
+                raise ValueError(
+                    f"Invalid bracing_type '{bracing_type}'. "
+                    "Allowed values are 'X' or 'K'."
+                )
+
+    return cross_bracings
 
 def build_crash_barrier(deck_top_z):
     """
