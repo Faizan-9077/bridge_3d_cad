@@ -42,7 +42,7 @@ carriageway_width = (num_girders - 1) * girder_spacing
 # cross bracing parameters
 cross_bracing_spacing = 4000 
 cross_bracing_thickness = 100
-bracing_type = "K"
+bracing_type = "X"
 
 # crash barrier parameters (mm)
 crash_barrier_base_width = 500
@@ -212,7 +212,7 @@ def main():
         cross_bracing_spacing
     )
 
-    display, start_display, _, _ = init_display()
+    display, start_display, add_menu, add_function_to_menu = init_display()
     
     girders, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
     
@@ -229,6 +229,43 @@ def main():
 
     for r in railings:
         display.DisplayShape(r, update=False)
+
+    from PySide6.QtCore import Qt
+
+    # Pan/Rotate functions with proper closure over display object
+    def pan_up():
+        display.Pan(0, 50)
+    
+    def pan_down():
+        display.Pan(0, -50)
+    
+    def pan_left():
+        display.Pan(-50, 0)
+    
+    def pan_right():
+        display.Pan(50, 0)
+
+    # Map arrow keys to pan functions
+    key_function = {
+        Qt.Key.Key_Up: pan_up,
+        Qt.Key.Key_Down: pan_down,
+        Qt.Key.Key_Right: pan_right,
+        Qt.Key.Key_Left: pan_left
+    }
+    
+    # Access the canvas widget from the display's internal structure
+    try:
+        # Try to get the canvas/widget that handles keyboard input
+        if hasattr(display, '_inited_display'):
+            canvas = display._inited_display
+            if hasattr(canvas, '_key_map'):
+                canvas._key_map.update(key_function)
+        # Alternative: try the parent window
+        elif hasattr(display, 'parent'):
+            if hasattr(display.parent, '_key_map'):
+                display.parent._key_map.update(key_function)
+    except AttributeError:
+        print("Warning: Could not bind arrow keys for panning")
 
     display.View.SetProj(1, 0, 0)
     display.FitAll()
