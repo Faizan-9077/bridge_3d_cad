@@ -68,3 +68,7 @@ def create_diagonal_bracing_between_girders(
     return [
         create_diagonal_member(p1, p2, thickness)
     ]
+
+
+
+

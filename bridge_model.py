@@ -1,5 +1,6 @@
 # bridge_model.py
 # Parametric 3D CAD Model of Steel Girder Bridge
+# Supports 3 footpath configurations: NONE, LEFT, RIGHT, BOTH
 
 from OCC.Display.backend import load_backend
 load_backend("pyside6")
@@ -17,7 +18,7 @@ from cross_bracing import (
     create_x_bracing_between_girders,
     create_k_bracing_between_girders
 )
-from crash_barriers import place_crash_barrier, create_crash_barrier
+from crash_barriers import place_crash_barrier, create_crash_barrier_left, create_crash_barrier_right
 
 # =====================
 # PARAMETERS (mm)
@@ -36,8 +37,10 @@ girder_spacing = 2750
 deck_thickness = 400
 deck_overhang = 3000
 
-# footpath 
-footpath_width = 2000
+# footpath configuration
+# Options: "NONE", "LEFT", "RIGHT", "BOTH"
+footpath_config = "BOTH"
+# footpath_width = 2000
 
 # Derived widths
 total_deck_width = (num_girders - 1) * girder_spacing + 2 * deck_overhang
@@ -58,21 +61,23 @@ crash_barrier_width = 175       # overall top width
 crash_barrier_height = 900       # total height
 crash_barrier_base_width = 450   # base width
 
-
 # railing parameters (mm)
 railing_width = 200
 railing_height = 1200
-
 
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)
 COLOR_DECK          = (0.50, 0.50, 0.50)
 COLOR_CROSS_BRACING = (134/255, 134/255, 100/255)
 COLOR_CRASH_BARRIER = (83/255, 83/255, 83/255)
-
+COLOR_RAILING       = (0.2, 0.2, 0.2)
 
 
 def build_girders():
+    """
+    Builds girders symmetrically across the centerline.
+    Girder positions are INDEPENDENT of footpath/crash barrier configuration.
+    """
     girders = []
     total_width = (num_girders - 1) * girder_spacing
 
@@ -85,6 +90,7 @@ def build_girders():
             girder_section_tw
         )
 
+        # Symmetric placement from centerline
         y_offset = (i * girder_spacing) - (total_width / 2)
 
         trsf = gp_Trsf()
@@ -97,6 +103,7 @@ def build_girders():
 
 
 def build_deck():
+    """Builds the deck slab"""
     deck = create_deck_slab(
         span_length_L,
         num_girders,
@@ -109,6 +116,7 @@ def build_deck():
 
 
 def build_cross_bracing():
+    """Builds cross bracing between girders"""
     cross_bracings = []
 
     # Number of bracing frames along span
@@ -161,89 +169,247 @@ def build_cross_bracing():
 
     return cross_bracings
 
+
 def build_crash_barrier(deck_top_z):
     """
-    Builds crash barrier at deck edges (parametric New Jersey type)
-    Left barrier: rightmost edge at center of leftmost girder
-    Right barrier: leftmost edge (traffic face) at center of rightmost girder
-    Distance between barriers = carriageway_width
+    Builds crash barriers based on footpath configuration.
+    
+    CASE 1 - NONE: Crash barriers at both deck edges
+    CASE 2 - LEFT: Crash barrier at right edge + crash barrier before left footpath
+    CASE 2 - RIGHT: Crash barrier at left edge + crash barrier before right footpath
+    CASE 3 - BOTH: Crash barriers in middle (before both footpaths)
     """
     crash_barriers = []
 
-    # Create base barrier with parametric shape control
-    base_barrier = create_crash_barrier(
-        length=span_length_L,
-        width=crash_barrier_width,
-        height=crash_barrier_height,
-        base_width=crash_barrier_base_width
-    )
-
-
-
-    # Right barrier (+Y side)
-    # Traffic face (Y=0) at center of rightmost girder
-    barrier_y_right = carriageway_width / 2 + 1.5*girder_section_bf
-
-    # Left barrier (-Y side)
-    # Rightmost edge (Y=base_width) at center of leftmost girder
-    barrier_y_left = -carriageway_width / 2 - girder_section_bf/2
-
-    # Right side barrier
-    crash_barriers.append(
-        place_crash_barrier(
-            base_barrier,
-            x=0,
-            y=barrier_y_right,
-            z=deck_top_z,
-            mirror=True
+    # Calculate key Y positions
+    girder_outer_y = (num_girders - 1) * girder_spacing / 2
+    deck_edge_y = girder_outer_y + deck_overhang
+    
+    
+    # CASE 1: NO FOOTPATH
+   
+    if footpath_config == "NONE":
+        # Right edge crash barrier (at +Y deck edge) - use RIGHT facing barrier
+        barrier_right = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
         )
-    )
-
-    # Left side barrier
-    crash_barriers.append(
-        place_crash_barrier(
-            base_barrier,
-            x=0,
-            y=barrier_y_left,
-            z=deck_top_z,
-            mirror=False
+        barrier_y_right = deck_edge_y - crash_barrier_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right,
+                z=deck_top_z
+            )
         )
-    )
+        
+        # Left edge crash barrier (at -Y deck edge) - use LEFT facing barrier
+        barrier_left = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left = -deck_edge_y + crash_barrier_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left,
+                z=deck_top_z
+            )
+        )
+    
+  
+    # CASE 2: LEFT FOOTPATH ONLY
+
+    elif footpath_config == "LEFT":
+        # Right edge crash barrier (no footpath on this side) - use RIGHT facing barrier
+        barrier_right = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_right = deck_edge_y - crash_barrier_width / 2 + girder_section_tw
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right,
+                z=deck_top_z
+            )
+        )
+        
+        # Left side: crash barrier BEFORE footpath - use LEFT facing barrier
+        barrier_left = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left_middle = -(girder_outer_y + crash_barrier_width / 2)
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left_middle,
+                z=deck_top_z
+            )
+        )
+    
+  
+    # CASE 2: RIGHT FOOTPATH ONLY
+  
+    elif footpath_config == "RIGHT":
+        # Left edge crash barrier (no footpath on this side) - use LEFT facing barrier
+        barrier_left = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left = -deck_edge_y + crash_barrier_width / 2 - girder_section_tw
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left,
+                z=deck_top_z
+            )
+        )
+        
+        # Right side: crash barrier BEFORE footpath - use RIGHT facing barrier
+        barrier_right = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_right_middle = girder_outer_y - crash_barrier_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right_middle,
+                z=deck_top_z
+            )
+        )
+    
+  
+    # CASE 3: BOTH FOOTPATHS
+    elif footpath_config == "BOTH":
+        
+        # Use crash_barrier_base_width (the wider bottom)
+        offset = crash_barrier_base_width / 2
+        
+        # Right side: traffic faces inward (negative Y) - use RIGHT facing barrier
+        barrier_right = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_right = girder_outer_y + offset
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right,
+                z=deck_top_z
+            )
+        )
+
+        # Left side: traffic faces inward (positive Y) - use LEFT facing barrier
+        barrier_left = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left = -(girder_outer_y + offset)
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left,
+                z=deck_top_z
+            )
+        )
+
+        print("Right Y:", barrier_y_right)
+        print("Left  Y:", barrier_y_left)
+
+        print(f"crash_barrier_width = {crash_barrier_width}")
+        print(f"crash_barrier_base_width = {crash_barrier_base_width}")
+        print(f"girder_section_bf = {girder_section_bf}")
+        print(f"Barrier extends ±{crash_barrier_base_width/2} from its center")
 
     return crash_barriers
 
 
 def build_railing(deck_top_z):
     """
-    Builds railing at extreme left edge of deck
+    Builds railings based on footpath configuration.
+    
+    CASE 1 - NONE: No railings
+    CASE 2 - LEFT: Railing at left deck edge
+    CASE 2 - RIGHT: Railing at right deck edge
+    CASE 3 - BOTH: Railings at both deck edges
     """
     railings = []
 
+    # No railings for NONE case
+    if footpath_config == "NONE":
+        return railings
+
+    # Create base railing shape
     base_railing = create_railing(
         length=span_length_L,
         width=railing_width,
         height=railing_height
     )
 
-    # Deck geometry
+    # Calculate deck edge position
     girder_outer_y = (num_girders - 1) * girder_spacing / 2
     deck_edge_y = girder_outer_y + deck_overhang
 
-    # Extreme LEFT edge (negative Y)
-    railing_y = -(deck_edge_y - railing_width / 2)
-
-    railings.append(
-        place_railing(
-            base_railing,
-            x=span_length_L / 2,
-            y=railing_y,
-            z=deck_top_z
+    # ========================================
+    # LEFT FOOTPATH - Railing at left edge
+    # ========================================
+    if footpath_config == "LEFT" or footpath_config == "BOTH":
+        railing_y_left = -(deck_edge_y - railing_width / 2)
+        railings.append(
+            place_railing(
+                base_railing,
+                x=span_length_L / 2,
+                y=railing_y_left,
+                z=deck_top_z
+            )
         )
-    )
+
+    # ========================================
+    # RIGHT FOOTPATH - Railing at right edge
+    # ========================================
+    if footpath_config == "RIGHT" or footpath_config == "BOTH":
+        railing_y_right = deck_edge_y - railing_width / 2
+        railings.append(
+            place_railing(
+                base_railing,
+                x=span_length_L / 2,
+                y=railing_y_right,
+                z=deck_top_z
+            )
+        )
 
     return railings
 
+
 def display_colored(display, shape, rgb):
+    """Helper function to display shapes with color"""
     display.DisplayShape(
         shape,
         color=Quantity_Color(*rgb, Quantity_TOC_RGB),
@@ -251,8 +417,8 @@ def display_colored(display, shape, rgb):
     )
 
 
-
 def assemble_bridge():
+    """Assembles all bridge components"""
     girders = build_girders()
     cross_bracings = build_cross_bracing()
     deck = build_deck()
@@ -264,35 +430,59 @@ def assemble_bridge():
 
 
 def main():
+    """Main function to build and display the bridge"""
+    
+    # Validate inputs
     validate_bridge_inputs(
         num_girders,
         girder_spacing,
         span_length_L,
-        cross_bracing_spacing
+        cross_bracing_spacing,
+        deck_thickness=deck_thickness,
+        footpath_config=footpath_config,
+        # footpath_width=footpath_width
     )
 
+
+    # Print configuration for user reference
+    print("=" * 60)
+    print("BRIDGE CONFIGURATION")
+    print("=" * 60)
+    print(f"Footpath Configuration: {footpath_config}")
+    print(f"Number of Girders: {num_girders}")
+    print(f"Girder Spacing: {girder_spacing} mm")
+    print(f"Deck Overhang: {deck_overhang} mm")
+    print(f"Total Deck Width: {total_deck_width} mm")
+    print(f"Carriageway Width: {carriageway_width} mm")
+
+    # Initialize display
     display, start_display, add_menu, add_function_to_menu = init_display()
     
+    # Assemble bridge components
     girders, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
     
+    # Display girders
     for g in girders:
         display_colored(display, g, COLOR_GIRDER)
 
+    # Display cross bracings
     for cb in cross_bracings:
         display_colored(display, cb, COLOR_CROSS_BRACING)
 
+    # Display deck
     display_colored(display, deck, COLOR_DECK)
 
+    # Display crash barriers
     for cb in crash_barriers:
         display_colored(display, cb, COLOR_CRASH_BARRIER)
 
+    # Display railings
     for r in railings:
-        display_colored(display, r, (0.2, 0.2, 0.2))  # railing color
+        display_colored(display, r, COLOR_RAILING)
 
-
+    # Set up arrow key panning
     from PySide6.QtCore import Qt
 
-    # Pan/Rotate functions with proper closure over display object
     def pan_up():
         display.Pan(0, 50)
     
@@ -305,7 +495,6 @@ def main():
     def pan_right():
         display.Pan(50, 0)
 
-    # Map arrow keys to pan functions
     key_function = {
         Qt.Key.Key_Up: pan_up,
         Qt.Key.Key_Down: pan_down,
@@ -313,20 +502,18 @@ def main():
         Qt.Key.Key_Left: pan_left
     }
     
-    # Access the canvas widget from the display's internal structure
     try:
-        # Try to get the canvas/widget that handles keyboard input
         if hasattr(display, '_inited_display'):
             canvas = display._inited_display
             if hasattr(canvas, '_key_map'):
                 canvas._key_map.update(key_function)
-        # Alternative: try the parent window
         elif hasattr(display, 'parent'):
             if hasattr(display.parent, '_key_map'):
                 display.parent._key_map.update(key_function)
     except AttributeError:
         print("Warning: Could not bind arrow keys for panning")
 
+    # Set view and display
     display.View.SetProj(1, 0, 0)
     display.FitAll()
     display.Repaint()
