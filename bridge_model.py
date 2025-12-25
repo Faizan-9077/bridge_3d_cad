@@ -7,6 +7,7 @@ load_backend("pyside6")
 from OCC.Display.SimpleGui import init_display
 from OCC.Core.gp import gp_Trsf, gp_Vec
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB
 
 from deck import create_deck_slab
 from draw_i_section import create_i_section
@@ -63,6 +64,14 @@ crash_barrier_top_width = 250
 # railing parameters (mm)
 railing_width = 200
 railing_height = 1200
+
+
+# COLORS
+COLOR_GIRDER        = (72/255, 72/255, 54/255)
+COLOR_DECK          = (0.50, 0.50, 0.50)
+COLOR_CROSS_BRACING = (134/255, 134/255, 100/255)
+COLOR_CRASH_BARRIER = (83/255, 83/255, 83/255)
+
 
 
 def build_girders():
@@ -238,6 +247,14 @@ def build_railing(deck_top_z):
 
     return railings
 
+def display_colored(display, shape, rgb):
+    display.DisplayShape(
+        shape,
+        color=Quantity_Color(*rgb, Quantity_TOC_RGB),
+        update=False
+    )
+
+
 
 def assemble_bridge():
     girders = build_girders()
@@ -263,18 +280,19 @@ def main():
     girders, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
     
     for g in girders:
-        display.DisplayShape(g, update=False)
+        display_colored(display, g, COLOR_GIRDER)
 
     for cb in cross_bracings:
-        display.DisplayShape(cb, update=False)
+        display_colored(display, cb, COLOR_CROSS_BRACING)
 
-    display.DisplayShape(deck, update=False)
-    
+    display_colored(display, deck, COLOR_DECK)
+
     for cb in crash_barriers:
-        display.DisplayShape(cb, update=False)
+        display_colored(display, cb, COLOR_CRASH_BARRIER)
 
     for r in railings:
-        display.DisplayShape(r, update=False)
+        display_colored(display, r, (0.2, 0.2, 0.2))  # railing color
+
 
     from PySide6.QtCore import Qt
 
