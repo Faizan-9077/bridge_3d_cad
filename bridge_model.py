@@ -54,12 +54,10 @@ x_bracket_option = "BOTH"
 k_top_bracket = False
 
 # crash barrier parameters (mm)
-crash_barrier_base_width = 500
-crash_barrier_toe_height = 200
-crash_barrier_slope_height = 300
-crash_barrier_top_vertical_height = 600
-crash_barrier_mid_width_ratio = 0.75
-crash_barrier_top_width = 250
+crash_barrier_width = 175       # overall top width
+crash_barrier_height = 900       # total height
+crash_barrier_base_width = 450   # base width
+
 
 # railing parameters (mm)
 railing_width = 200
@@ -174,14 +172,12 @@ def build_crash_barrier(deck_top_z):
 
     # Create base barrier with parametric shape control
     base_barrier = create_crash_barrier(
-        span_length_L,
-        crash_barrier_base_width,
-        crash_barrier_toe_height,
-        crash_barrier_slope_height,
-        crash_barrier_top_vertical_height,
-        crash_barrier_mid_width_ratio,
-        crash_barrier_top_width
+        length=span_length_L,
+        width=crash_barrier_width,
+        height=crash_barrier_height,
+        base_width=crash_barrier_base_width
     )
+
 
 
     # Right barrier (+Y side)
