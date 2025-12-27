@@ -1,3 +1,4 @@
+
 # bridge_model.py
 # Parametric 3D CAD Model of Steel Girder Bridge
 # Supports 3 footpath configurations: NONE, LEFT, RIGHT, BOTH
@@ -30,31 +31,28 @@ girder_section_d = 900
 girder_section_bf = 500
 girder_section_tf = 260
 girder_section_tw = 100
-num_girders = 8
+num_girders = 5
 girder_spacing = 2750
+
+carriageway_width = 12000
 
 # deck parameters
 deck_thickness = 400
-deck_overhang = 3000
 
 # footpath configuration
 # Options: "NONE", "LEFT", "RIGHT", "BOTH"
-footpath_config = "BOTH"
-# footpath_width = 2000
-
-# Derived widths
-total_deck_width = (num_girders - 1) * girder_spacing + 2 * deck_overhang
-carriageway_width = (num_girders - 1) * girder_spacing
+footpath_config = "LEFT"
+footpath_width = 2000
 
 # cross bracing parameters
 cross_bracing_spacing = 4000 
 cross_bracing_thickness = 100
-bracing_type = "K"
+bracing_type = "X"
 # X bracing option: "NONE" | "LOWER" | "UPPER" | "BOTH"
 x_bracket_option = "BOTH"
 
 # K bracing option: top bracket optional
-k_top_bracket = False
+k_top_bracket = True
 
 # crash barrier parameters (mm)
 crash_barrier_width = 175       # overall top width
@@ -102,13 +100,47 @@ def build_girders():
     return girders
 
 
+def calculate_deck_width(footpath_config):
+    """
+    Calculates total deck width based on footpath configuration.
+    
+    Layout from center outward:
+    - Carriageway (centered at Y=0)
+    - Crash barriers (at carriageway edges)
+    - Footpaths (if present)
+    - Railings (at deck edges, if footpaths present)
+    
+    Returns:
+    --------
+    total_deck_width : float
+    """
+    
+    if footpath_config == "NONE":
+        # carriageway + 2 × crash_barrier_base_width
+        return carriageway_width + 2 * crash_barrier_base_width
+    
+    elif footpath_config == "LEFT" or footpath_config == "RIGHT":
+        # carriageway + 2 × crash_barrier_base_width + footpath + railing
+        return carriageway_width + 2 * crash_barrier_base_width + footpath_width + railing_width
+    
+    elif footpath_config == "BOTH":
+        # carriageway + 2 × crash_barrier_base_width + 2 × footpath + 2 × railing
+        return carriageway_width + 2 * crash_barrier_base_width + 2 * footpath_width + 2 * railing_width
+    
+    else:
+        raise ValueError(f"Invalid footpath_config: {footpath_config}")
+
+
 def build_deck():
-    """Builds the deck slab"""
+    """
+    Builds the deck slab based on footpath configuration.
+    Deck is always centered at Y=0.
+    """
+    total_deck_width = calculate_deck_width(footpath_config)
+    
     deck = create_deck_slab(
         span_length_L,
-        num_girders,
-        girder_spacing,
-        deck_overhang,
+        total_deck_width,
         deck_thickness,
         girder_section_d
     )
@@ -169,151 +201,212 @@ def build_cross_bracing():
 
     return cross_bracings
 
+def calculate_deck_width(footpath_config):
+    """
+    Calculates total deck width based on footpath configuration.
+    
+    Returns:
+    --------
+    total_deck_width : float
+    """
+    
+    if footpath_config == "NONE":
+        # carriageway + 2 × crash_barrier_base_width
+        return carriageway_width + 2 * crash_barrier_base_width
+    
+    elif footpath_config == "LEFT" or footpath_config == "RIGHT":
+        # carriageway + 2 × crash_barrier_base_width + footpath + railing
+        return carriageway_width + 2 * crash_barrier_base_width + footpath_width + railing_width
+    
+    elif footpath_config == "BOTH":
+        # carriageway + 2 × crash_barrier_base_width + 2 × footpath + 2 × railing
+        return carriageway_width + 2 * crash_barrier_base_width + 2 * footpath_width + 2 * railing_width
+    
+    else:
+        raise ValueError(f"Invalid footpath_config: {footpath_config}")
+
+
+def calculate_carriageway_offset(footpath_config):
+    """
+    Calculates the carriageway position relative to deck center (Y=0).
+    
+    DECK is always centered at Y=0.
+    Carriageway position depends on footpath configuration.
+    
+    Returns:
+    --------
+    carriageway_y_offset : float (offset of carriageway center from Y=0)
+    """
+    
+    if footpath_config == "NONE" or footpath_config == "BOTH":
+        # Symmetric config - carriageway is centered
+        return 0
+    
+    elif footpath_config == "LEFT":
+        # Footpath on left - carriageway shifts RIGHT (positive Y)
+        # Shift = (footpath_width + railing_width) / 2
+        return (footpath_width + railing_width) / 2
+    
+    elif footpath_config == "RIGHT":
+        # Footpath on right - carriageway shifts LEFT (negative Y)
+        # Shift = -(footpath_width + railing_width) / 2
+        return -(footpath_width + railing_width) / 2
+    
+    else:
+        raise ValueError(f"Invalid footpath_config: {footpath_config}")
+    
+
 
 def build_crash_barrier(deck_top_z):
     """
     Builds crash barriers based on footpath configuration.
     
-    CASE 1 - NONE: Crash barriers at both deck edges
-    CASE 2 - LEFT: Crash barrier at right edge + crash barrier before left footpath
-    CASE 2 - RIGHT: Crash barrier at left edge + crash barrier before right footpath
-    CASE 3 - BOTH: Crash barriers in middle (before both footpaths)
+    DECK is centered at Y=0.
+    Crash barriers are placed relative to deck edges and carriageway position.
+    
+    Logic:
+    - Carriageway position is calculated based on footpath config
+    - Crash barriers are placed at carriageway edges
+    - If no footpath on a side, crash barrier extends to deck edge
     """
     crash_barriers = []
 
-    # Calculate key Y positions
-    girder_outer_y = (num_girders - 1) * girder_spacing / 2
-    deck_edge_y = girder_outer_y + deck_overhang
+    # Get deck dimensions
+    total_deck_width = calculate_deck_width(footpath_config)
+    deck_half_width = total_deck_width / 2
     
+    # Get carriageway position (offset from Y=0)
+    carriageway_offset = calculate_carriageway_offset(footpath_config)
+    carriageway_half_width = carriageway_width / 2
+    
+    # Calculate carriageway edges in global coordinates
+    carriageway_right_edge = carriageway_offset + carriageway_half_width
+    carriageway_left_edge = carriageway_offset - carriageway_half_width
     
     # CASE 1: NO FOOTPATH
-   
+    # Both barriers at deck edges (carriageway = full deck width)
     if footpath_config == "NONE":
-        # Right edge crash barrier (at +Y deck edge) - use RIGHT facing barrier
-        barrier_right = create_crash_barrier_right(
-            length=span_length_L,
-            width=crash_barrier_width,
-            height=crash_barrier_height,
-            base_width=crash_barrier_base_width
-        )
-        barrier_y_right = deck_edge_y - crash_barrier_width / 2
-        crash_barriers.append(
-            place_crash_barrier(
-                barrier_right,
-                x=0,
-                y=barrier_y_right,
-                z=deck_top_z
-            )
-        )
-        
-        # Left edge crash barrier (at -Y deck edge) - use LEFT facing barrier
-        barrier_left = create_crash_barrier_left(
-            length=span_length_L,
-            width=crash_barrier_width,
-            height=crash_barrier_height,
-            base_width=crash_barrier_base_width
-        )
-        barrier_y_left = -deck_edge_y + crash_barrier_width / 2
-        crash_barriers.append(
-            place_crash_barrier(
-                barrier_left,
-                x=0,
-                y=barrier_y_left,
-                z=deck_top_z
-            )
-        )
-    
-  
-    # CASE 2: LEFT FOOTPATH ONLY
-
-    elif footpath_config == "LEFT":
-        # Right edge crash barrier (no footpath on this side) - use RIGHT facing barrier
-        barrier_right = create_crash_barrier_right(
-            length=span_length_L,
-            width=crash_barrier_width,
-            height=crash_barrier_height,
-            base_width=crash_barrier_base_width
-        )
-        barrier_y_right = deck_edge_y - crash_barrier_width / 2 + girder_section_tw
-        crash_barriers.append(
-            place_crash_barrier(
-                barrier_right,
-                x=0,
-                y=barrier_y_right,
-                z=deck_top_z
-            )
-        )
-        
-        # Left side: crash barrier BEFORE footpath - use LEFT facing barrier
-        barrier_left = create_crash_barrier_left(
-            length=span_length_L,
-            width=crash_barrier_width,
-            height=crash_barrier_height,
-            base_width=crash_barrier_base_width
-        )
-        barrier_y_left_middle = -(girder_outer_y + crash_barrier_width / 2)
-        crash_barriers.append(
-            place_crash_barrier(
-                barrier_left,
-                x=0,
-                y=barrier_y_left_middle,
-                z=deck_top_z
-            )
-        )
-    
-  
-    # CASE 2: RIGHT FOOTPATH ONLY
-  
-    elif footpath_config == "RIGHT":
-        # Left edge crash barrier (no footpath on this side) - use LEFT facing barrier
-        barrier_left = create_crash_barrier_left(
-            length=span_length_L,
-            width=crash_barrier_width,
-            height=crash_barrier_height,
-            base_width=crash_barrier_base_width
-        )
-        barrier_y_left = -deck_edge_y + crash_barrier_width / 2 - girder_section_tw
-        crash_barriers.append(
-            place_crash_barrier(
-                barrier_left,
-                x=0,
-                y=barrier_y_left,
-                z=deck_top_z
-            )
-        )
-        
-        # Right side: crash barrier BEFORE footpath - use RIGHT facing barrier
-        barrier_right = create_crash_barrier_right(
-            length=span_length_L,
-            width=crash_barrier_width,
-            height=crash_barrier_height,
-            base_width=crash_barrier_base_width
-        )
-        barrier_y_right_middle = girder_outer_y - crash_barrier_width / 2
-        crash_barriers.append(
-            place_crash_barrier(
-                barrier_right,
-                x=0,
-                y=barrier_y_right_middle,
-                z=deck_top_z
-            )
-        )
-    
-  
-    # CASE 3: BOTH FOOTPATHS
-    elif footpath_config == "BOTH":
-        
-        # Use crash_barrier_base_width (the wider bottom)
-        offset = crash_barrier_base_width / 2
-        
-        # Right side: traffic faces inward (negative Y) - use RIGHT facing barrier
+        # Right crash barrier at deck edge
         barrier_right = create_crash_barrier_left(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
             base_width=crash_barrier_base_width
         )
-        barrier_y_right = girder_outer_y + offset
+        barrier_y_right = deck_half_width - crash_barrier_base_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right,
+                z=deck_top_z
+            )
+        )
+        
+        # Left crash barrier at deck edge
+        barrier_left = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left = -deck_half_width + crash_barrier_base_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left,
+                z=deck_top_z
+            )
+        )
+    
+    # CASE 2: LEFT FOOTPATH ONLY
+    # Left: barrier at carriageway edge (before footpath)
+    # Right: barrier at deck edge (no footpath)
+    elif footpath_config == "LEFT":
+        # Right side: NO footpath → crash barrier at DECK EDGE
+        barrier_right = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_right = deck_half_width - crash_barrier_base_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right,
+                z=deck_top_z
+            )
+        )
+        
+        # Left side: HAS footpath → crash barrier at CARRIAGEWAY EDGE
+        barrier_left = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left = carriageway_left_edge - crash_barrier_base_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left,
+                z=deck_top_z
+            )
+        )
+    
+    # CASE 3: RIGHT FOOTPATH ONLY
+    # Left: barrier at deck edge (no footpath)
+    # Right: barrier at carriageway edge (before footpath)
+    elif footpath_config == "RIGHT":
+        # Left side: NO footpath → crash barrier at DECK EDGE
+        barrier_left = create_crash_barrier_right(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_left = -deck_half_width + crash_barrier_base_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_left,
+                x=0,
+                y=barrier_y_left,
+                z=deck_top_z
+            )
+        )
+        
+        # Right side: HAS footpath → crash barrier at CARRIAGEWAY EDGE
+        barrier_right = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_right = carriageway_right_edge + crash_barrier_base_width / 2
+        crash_barriers.append(
+            place_crash_barrier(
+                barrier_right,
+                x=0,
+                y=barrier_y_right,
+                z=deck_top_z
+            )
+        )
+    
+    # CASE 4: BOTH FOOTPATHS
+    # Both barriers at carriageway edges (symmetric)
+    elif footpath_config == "BOTH":
+        # Right crash barrier at carriageway edge
+        barrier_right = create_crash_barrier_left(
+            length=span_length_L,
+            width=crash_barrier_width,
+            height=crash_barrier_height,
+            base_width=crash_barrier_base_width
+        )
+        barrier_y_right = carriageway_right_edge + crash_barrier_base_width / 2
         crash_barriers.append(
             place_crash_barrier(
                 barrier_right,
@@ -323,14 +416,14 @@ def build_crash_barrier(deck_top_z):
             )
         )
 
-        # Left side: traffic faces inward (positive Y) - use LEFT facing barrier
+        # Left crash barrier at carriageway edge
         barrier_left = create_crash_barrier_right(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
             base_width=crash_barrier_base_width
         )
-        barrier_y_left = -(girder_outer_y + offset)
+        barrier_y_left = carriageway_left_edge - crash_barrier_base_width / 2
         crash_barriers.append(
             place_crash_barrier(
                 barrier_left,
@@ -340,25 +433,13 @@ def build_crash_barrier(deck_top_z):
             )
         )
 
-        print("Right Y:", barrier_y_right)
-        print("Left  Y:", barrier_y_left)
-
-        print(f"crash_barrier_width = {crash_barrier_width}")
-        print(f"crash_barrier_base_width = {crash_barrier_base_width}")
-        print(f"girder_section_bf = {girder_section_bf}")
-        print(f"Barrier extends ±{crash_barrier_base_width/2} from its center")
-
     return crash_barriers
 
 
 def build_railing(deck_top_z):
     """
-    Builds railings based on footpath configuration.
-    
-    CASE 1 - NONE: No railings
-    CASE 2 - LEFT: Railing at left deck edge
-    CASE 2 - RIGHT: Railing at right deck edge
-    CASE 3 - BOTH: Railings at both deck edges
+    Builds railings at DECK EDGES based on footpath configuration.
+    Railings only exist where footpaths exist.
     """
     railings = []
 
@@ -374,14 +455,12 @@ def build_railing(deck_top_z):
     )
 
     # Calculate deck edge position
-    girder_outer_y = (num_girders - 1) * girder_spacing / 2
-    deck_edge_y = girder_outer_y + deck_overhang
+    total_deck_width = calculate_deck_width(footpath_config)
+    deck_half_width = total_deck_width / 2
 
-    # ========================================
-    # LEFT FOOTPATH - Railing at left edge
-    # ========================================
+    # LEFT FOOTPATH - Railing at left deck edge
     if footpath_config == "LEFT" or footpath_config == "BOTH":
-        railing_y_left = -(deck_edge_y - railing_width / 2)
+        railing_y_left = -(deck_half_width - railing_width / 2)
         railings.append(
             place_railing(
                 base_railing,
@@ -391,11 +470,9 @@ def build_railing(deck_top_z):
             )
         )
 
-    # ========================================
-    # RIGHT FOOTPATH - Railing at right edge
-    # ========================================
+    # RIGHT FOOTPATH - Railing at right deck edge
     if footpath_config == "RIGHT" or footpath_config == "BOTH":
-        railing_y_right = deck_edge_y - railing_width / 2
+        railing_y_right = deck_half_width - railing_width / 2
         railings.append(
             place_railing(
                 base_railing,
@@ -440,20 +517,28 @@ def main():
         cross_bracing_spacing,
         deck_thickness=deck_thickness,
         footpath_config=footpath_config,
-        # footpath_width=footpath_width
     )
 
+    # Calculate dimensions
+    total_deck_width = calculate_deck_width(footpath_config)
+    carriageway_offset = calculate_carriageway_offset(footpath_config)
 
     # Print configuration for user reference
     print("=" * 60)
     print("BRIDGE CONFIGURATION")
     print("=" * 60)
     print(f"Footpath Configuration: {footpath_config}")
-    print(f"Number of Girders: {num_girders}")
-    print(f"Girder Spacing: {girder_spacing} mm")
-    print(f"Deck Overhang: {deck_overhang} mm")
-    print(f"Total Deck Width: {total_deck_width} mm")
     print(f"Carriageway Width: {carriageway_width} mm")
+    if footpath_config in ["LEFT", "RIGHT"]:
+        print(f"Carriageway Offset from Center: {carriageway_offset:+.1f} mm")
+    print(f"Crash Barrier Base Width: {crash_barrier_base_width} mm")
+    if footpath_config != "NONE":
+        print(f"Footpath Width: {footpath_width} mm")
+        print(f"Railing Width: {railing_width} mm")
+    print(f"Total Deck Width: {total_deck_width} mm")
+    print(f"\nNumber of Girders: {num_girders}")
+    print(f"Girder Spacing: {girder_spacing} mm")
+    print("=" * 60)
 
     # Initialize display
     display, start_display, add_menu, add_function_to_menu = init_display()
