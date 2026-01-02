@@ -1,7 +1,7 @@
 
 # bridge_model.py
 # Parametric 3D CAD Model of Steel Girder Bridge
-# Supports 3 footpath configurations: NONE, LEFT, RIGHT, BOTH
+
 
 from OCC.Display.backend import load_backend
 load_backend("pyside6")
@@ -20,6 +20,9 @@ from cross_bracing import (
     create_k_bracing_between_girders
 )
 from crash_barriers import place_crash_barrier, create_crash_barrier_left, create_crash_barrier_right
+from sections.section_database import ISA_SECTIONS
+from sections.section_database import get_section_props
+
 
 # =====================
 # PARAMETERS (mm)
@@ -54,6 +57,17 @@ x_bracket_option = "BOTH"
 # K bracing option: top bracket optional
 k_top_bracket = True
 
+
+cross_bracing_section_type = "ANGLE"
+cross_bracing_section_name = "ISA_100x100x8"
+
+cross_bracing_section_props = get_section_props(
+    cross_bracing_section_type,
+    cross_bracing_section_name
+)
+
+
+
 # crash barrier parameters (mm)
 crash_barrier_width = 175       # overall top width
 crash_barrier_height = 900       # total height
@@ -66,7 +80,7 @@ railing_height = 1200
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)
 COLOR_DECK          = (0.50, 0.50, 0.50)
-COLOR_CROSS_BRACING = (134/255, 134/255, 100/255)
+COLOR_CROSS_BRACING =  (20/255, 20/255 , 20/255)       #(134/255, 134/255, 100/255)
 COLOR_CRASH_BARRIER = (83/255, 83/255, 83/255)
 COLOR_RAILING       = (0.2, 0.2, 0.2)
 
@@ -175,7 +189,9 @@ def build_cross_bracing():
                         flange_thickness=girder_section_tf,
                         thickness=cross_bracing_thickness,
                         flange_width=girder_section_bf,
-                        bracket_option=x_bracket_option
+                        bracket_option=x_bracket_option,
+                        section_type=cross_bracing_section_type,
+                        section_props=cross_bracing_section_props
                     )
                 )
 
@@ -189,7 +205,9 @@ def build_cross_bracing():
                         flange_thickness=girder_section_tf,
                         thickness=cross_bracing_thickness,
                         flange_width=girder_section_bf,
-                        top_bracket=k_top_bracket
+                        top_bracket=k_top_bracket,
+                        section_type=cross_bracing_section_type,
+                        section_props=cross_bracing_section_props
                     )
                 )
 
