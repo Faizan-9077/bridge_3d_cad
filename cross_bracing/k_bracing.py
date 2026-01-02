@@ -11,7 +11,10 @@ def create_k_bracing_between_girders(
     flange_thickness,
     thickness,
     flange_width,
-    top_bracket=False  # Bottom bracket is mandatory; top is optional
+    top_bracket=False, # Bottom bracket is mandatory; top is optional
+    section_type="BOX",
+    section_props=None,
+    roll_sign = +1
 ):
     """
     Creates K-type cross bracing between two adjacent girders.
@@ -56,31 +59,49 @@ def create_k_bracing_between_girders(
     # Left diagonal: left girder (top) → midpoint (bottom)
     p1 = gp_Pnt(x, y_left_diagonal, z_top)
     p2 = gp_Pnt(x, y_mid, z_bottom)
-    d1 = create_diagonal_member(p1, p2, thickness)
+    d1 = create_diagonal_member(
+        p1,
+        p2,
+        thickness,
+        section_type=section_type,
+        section_props=section_props,
+        roll_sign = 1
+    )
 
     # Right diagonal: right girder (top) → midpoint (bottom)
     p3 = gp_Pnt(x, y_right_diagonal, z_top)
     p4 = gp_Pnt(x, y_mid, z_bottom)
-    d2 = create_diagonal_member(p3, p4, thickness)
+    d2 = create_diagonal_member(
+        p3,
+        p4,
+        thickness,
+        section_type=section_type,
+        section_props=section_props,
+        roll_sign = 0
+
+    )
 
     braces.extend([d1, d2])
 
-    # -------------------------------------------------
+
     # Bottom bracket (MANDATORY)
-    # -------------------------------------------------
+
     bottom_member = create_horizontal_member_y(
         x,
         y_left,
         y_right,
         z_bottom,
         thickness,
-        flange_width
+        flange_width,
+        section_type, 
+        section_props, 
+        roll_sign
     )
     braces.append(bottom_member)
 
-    # -------------------------------------------------
+
     # Optional top bracket
-    # -------------------------------------------------
+
     if top_bracket:
         top_member = create_horizontal_member_y(
             x,
@@ -88,7 +109,10 @@ def create_k_bracing_between_girders(
             y_right,
             z_top,
             thickness,
-            flange_width
+            flange_width,
+            section_type, 
+            section_props, 
+            roll_sign
         )
         braces.append(top_member)
 
