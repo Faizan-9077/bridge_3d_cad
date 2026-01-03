@@ -58,13 +58,20 @@ x_bracket_option = "BOTH"
 k_top_bracket = True
 
 
-cross_bracing_section_type = "ANGLE"
-cross_bracing_section_name = "ISA_100x100x8"
+cross_bracing_section_type = "DOUBLE_ANGLE"
+cross_bracing_section_name = "ISA_90x60x6"
+
+# Only used if section type is DOUBLE_ANGLE
+cross_bracing_connection = "LONGER_LEG"
 
 cross_bracing_section_props = get_section_props(
     cross_bracing_section_type,
     cross_bracing_section_name
 )
+if cross_bracing_section_type == "DOUBLE_ANGLE":
+    cross_bracing_section_props = dict(cross_bracing_section_props)
+    cross_bracing_section_props["connection_type"] = cross_bracing_connection
+
 
 
 

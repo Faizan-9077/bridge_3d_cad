@@ -37,24 +37,18 @@ def create_k_bracing_between_girders(
 
     braces = []
 
-    # -------------------------------------------------
     # Web–flange junction levels
-    # -------------------------------------------------
     z_bottom = flange_thickness / 2
     z_top = girder_depth - flange_thickness / 2
 
-    # -------------------------------------------------
     # Web positions
-    # -------------------------------------------------
     y_left_diagonal = y_left + flange_width
     y_right_diagonal = y_right
 
     # Midpoint of bottom chord (horizontal)
     y_mid = (y_left_diagonal + y_right_diagonal) / 2
 
-    # -------------------------------------------------
     # Diagonals (MANDATORY)
-    # -------------------------------------------------
 
     # Left diagonal: left girder (top) → midpoint (bottom)
     p1 = gp_Pnt(x, y_left_diagonal, z_top)
