@@ -41,7 +41,9 @@ CHANNEL_SECTIONS = {
 
 SECTION_DATABASE = {
     "ANGLE": ISA_SECTIONS,
-    "CHANNEL": CHANNEL_SECTIONS
+    "DOUBLE_ANGLE": ISA_SECTIONS,
+    "CHANNEL": CHANNEL_SECTIONS,
+    "DOUBLE_CHANNEL": CHANNEL_SECTIONS
 }
 
 
@@ -68,14 +70,23 @@ def get_section_props(section_type, designation):
 
 SECTION_ROLL_RULES = {
     "ANGLE": {
-        "diagonal": [1.5708, -1.5708],   # ±90°
-        "horizontal": [2*1.5708]              # 0°
+        "diagonal": [1.5708, -1.5708],
+        "horizontal": [2*1.5708]
+    },
+    "DOUBLE_ANGLE": {           
+        "diagonal": [2*1.5708, 2*1.5708],
+        "horizontal": [2*1.5708]
     },
     "CHANNEL": {
-        "diagonal": [0],   # ±90°
-        "horizontal": [2*1.5708]              # 180°
+        "diagonal": [2*1.5708],
+        "horizontal": [2*1.5708]
+    },
+    "DOUBLE_CHANNEL": {
+        "diagonal": [2*1.5708],
+        "horizontal": [2*1.5708]
     }
 }
+
 
 
 def get_section_roll_angle(
@@ -92,7 +103,7 @@ def get_section_roll_angle(
 
     rules = SECTION_ROLL_RULES.get(section_type)
     if not rules:
-        return 0.0  # BOX, I-section, etc.
+        return 0.0  
 
     allowed = rules.get(member_role, [0.0])
 
