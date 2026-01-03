@@ -62,7 +62,7 @@ cross_bracing_section_type = "DOUBLE_ANGLE"
 cross_bracing_section_name = "ISA_90x60x6"
 
 # Only used if section type is DOUBLE_ANGLE
-cross_bracing_connection = "LONGER_LEG"
+cross_bracing_connection = "SHORTER_LEG"
 
 cross_bracing_section_props = get_section_props(
     cross_bracing_section_type,
@@ -87,7 +87,7 @@ railing_height = 1200
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)
 COLOR_DECK          = (0.50, 0.50, 0.50)
-COLOR_CROSS_BRACING =  (20/255, 20/255 , 20/255)       #(134/255, 134/255, 100/255)
+COLOR_CROSS_BRACING =  (95/255, 85/255, 110/255)      #(134/255, 134/255, 100/255)
 COLOR_CRASH_BARRIER = (83/255, 83/255, 83/255)
 COLOR_RAILING       = (0.2, 0.2, 0.2)
 

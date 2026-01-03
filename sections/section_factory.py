@@ -53,7 +53,7 @@ def create_section_solid(
             flange_thickness=section_props["flange_thickness"]
         )
     
-    elif section_type == "DOUBLE_CHANNEL":                      # ✅ added
+    elif section_type == "DOUBLE_CHANNEL":                    
         return create_double_channel_section(
             length=length,
             depth=section_props["depth"],
