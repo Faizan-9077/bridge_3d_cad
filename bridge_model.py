@@ -12,6 +12,9 @@ from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB
 
 from deck import create_deck_slab
+from deck_texture import generate_deck_texture
+from deck_texture import shift_texture_to_center
+from deck_texture import place_deck_texture
 from draw_i_section import create_i_section
 from validation import validate_bridge_inputs
 from railing import create_railing, place_railing
@@ -87,7 +90,8 @@ rail_count = 4
 
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)
-COLOR_DECK          = (0.50, 0.50, 0.50)
+COLOR_DECK          = (0.7, 0.7, 0.7)
+texture_color = Quantity_Color(0.30, 0.30, 0.30, Quantity_TOC_RGB)
 COLOR_CROSS_BRACING =  (95/255, 85/255, 110/255)      #(134/255, 134/255, 100/255)
 COLOR_CRASH_BARRIER = (83/255, 83/255, 83/255)
 COLOR_RAILING       = (0.2, 0.2, 0.2)
@@ -536,7 +540,7 @@ def assemble_bridge():
 
 def main():
     """Main function to build and display the bridge"""
-    
+
     # Validate inputs
     validate_bridge_inputs(
         num_girders,
@@ -551,7 +555,7 @@ def main():
     total_deck_width = calculate_deck_width(footpath_config)
     carriageway_offset = calculate_carriageway_offset(footpath_config)
 
-    # Print configuration for user reference
+    # Print configuration
     print("=" * 60)
     print("BRIDGE CONFIGURATION")
     print("=" * 60)
@@ -570,10 +574,10 @@ def main():
 
     # Initialize display
     display, start_display, add_menu, add_function_to_menu = init_display()
-    
+
     # Assemble bridge components
     girders, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
-    
+
     # Display girders
     for g in girders:
         display_colored(display, g, COLOR_GIRDER)
@@ -582,14 +586,33 @@ def main():
     for cb in cross_bracings:
         display_colored(display, cb, COLOR_CROSS_BRACING)
 
-    # Display deck
+    # Display deck slab (CRITICAL)
     display_colored(display, deck, COLOR_DECK)
 
+
+    # Generate & display deck texture
+    deck_top_z = girder_section_d + deck_thickness
+
+    texture_shapes = place_deck_texture(
+        deck_length=span_length_L,
+        deck_width=total_deck_width,
+        deck_thickness=deck_thickness,
+        deck_top_z=deck_top_z
+    )
+
+    for s in texture_shapes:
+        display.DisplayShape(s, color=texture_color, update=False)
+
+
+    # --------------------------------------------------
     # Display crash barriers
+    # --------------------------------------------------
     for cb in crash_barriers:
         display_colored(display, cb, COLOR_CRASH_BARRIER)
 
+    # --------------------------------------------------
     # Display railings
+    # --------------------------------------------------
     for r in railings:
         display_colored(display, r, COLOR_RAILING)
 
