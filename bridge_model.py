@@ -312,7 +312,7 @@ def build_crash_barrier(deck_top_z):
     # Both barriers at deck edges (carriageway = full deck width)
     if footpath_config == "NONE":
         # Right crash barrier at deck edge
-        barrier_right = create_crash_barrier_left(
+        barrier_right = create_crash_barrier_right(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -329,7 +329,7 @@ def build_crash_barrier(deck_top_z):
         )
         
         # Left crash barrier at deck edge
-        barrier_left = create_crash_barrier_right(
+        barrier_left = create_crash_barrier_left(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -350,7 +350,7 @@ def build_crash_barrier(deck_top_z):
     # Right: barrier at deck edge (no footpath)
     elif footpath_config == "LEFT":
         # Right side: NO footpath → crash barrier at DECK EDGE
-        barrier_right = create_crash_barrier_left(
+        barrier_right = create_crash_barrier_right(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -367,7 +367,7 @@ def build_crash_barrier(deck_top_z):
         )
         
         # Left side: HAS footpath → crash barrier at CARRIAGEWAY EDGE
-        barrier_left = create_crash_barrier_right(
+        barrier_left = create_crash_barrier_left(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -388,7 +388,7 @@ def build_crash_barrier(deck_top_z):
     # Right: barrier at carriageway edge (before footpath)
     elif footpath_config == "RIGHT":
         # Left side: NO footpath → crash barrier at DECK EDGE
-        barrier_left = create_crash_barrier_right(
+        barrier_left = create_crash_barrier_left(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -405,7 +405,7 @@ def build_crash_barrier(deck_top_z):
         )
         
         # Right side: HAS footpath → crash barrier at CARRIAGEWAY EDGE
-        barrier_right = create_crash_barrier_left(
+        barrier_right = create_crash_barrier_right(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -425,7 +425,7 @@ def build_crash_barrier(deck_top_z):
     # Both barriers at carriageway edges (symmetric)
     elif footpath_config == "BOTH":
         # Right crash barrier at carriageway edge
-        barrier_right = create_crash_barrier_left(
+        barrier_right = create_crash_barrier_right(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
@@ -442,7 +442,7 @@ def build_crash_barrier(deck_top_z):
         )
 
         # Left crash barrier at carriageway edge
-        barrier_left = create_crash_barrier_right(
+        barrier_left = create_crash_barrier_left(
             length=span_length_L,
             width=crash_barrier_width,
             height=crash_barrier_height,
