@@ -44,7 +44,7 @@ deck_thickness = 400
 
 # footpath configuration
 # Options: "NONE", "LEFT", "RIGHT", "BOTH"
-footpath_config = "LEFT"
+footpath_config = "BOTH"
 footpath_width = 2000
 
 # cross bracing parameters
@@ -82,7 +82,8 @@ crash_barrier_base_width = 450   # base width
 
 # railing parameters (mm)
 railing_width = 200
-railing_height = 1200
+railing_height = 1100
+rail_count = 4
 
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)
@@ -461,6 +462,7 @@ def build_crash_barrier(deck_top_z):
     return crash_barriers
 
 
+
 def build_railing(deck_top_z):
     """
     Builds railings at DECK EDGES based on footpath configuration.
@@ -476,7 +478,8 @@ def build_railing(deck_top_z):
     base_railing = create_railing(
         length=span_length_L,
         width=railing_width,
-        height=railing_height
+        height=railing_height,
+        rail_count=rail_count
     )
 
     # Calculate deck edge position
