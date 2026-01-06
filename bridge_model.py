@@ -84,9 +84,9 @@ crash_barrier_height = 900       # total height
 crash_barrier_base_width = 450   # base width
 
 # railing parameters (mm)
-railing_width = 200
+railing_width = 375
 railing_height = 1100
-rail_count = 4
+rail_count = 3
 
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)

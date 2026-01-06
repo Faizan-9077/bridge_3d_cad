@@ -29,7 +29,7 @@ def create_railing(
     """
 
     # Fixed base height
-    BASE_HEIGHT = 100  # mm
+    BASE_HEIGHT = 100  
 
     body_height = height - BASE_HEIGHT
     if body_height <= 0:
