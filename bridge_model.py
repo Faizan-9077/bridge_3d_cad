@@ -10,6 +10,8 @@ from OCC.Display.SimpleGui import init_display
 from OCC.Core.gp import gp_Trsf, gp_Vec
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB
+from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Fuse
+
 
 from deck import create_deck_slab
 from deck_texture import generate_deck_texture
@@ -25,6 +27,8 @@ from cross_bracing import (
 from crash_barriers import place_crash_barrier, create_crash_barrier_left, create_crash_barrier_right
 from sections.section_database import ISA_SECTIONS
 from sections.section_database import get_section_props
+from sections.stiffener_plate import create_girder_stiffeners
+
 
 
 # =====================
@@ -65,7 +69,7 @@ cross_bracing_section_type = "DOUBLE_ANGLE"
 cross_bracing_section_name = "ISA_90x60x6"
 
 # Only used if section type is DOUBLE_ANGLE
-cross_bracing_connection = "SHORTER_LEG"
+cross_bracing_connection = "LONGER_LEG"
 
 cross_bracing_section_props = get_section_props(
     cross_bracing_section_type,
@@ -88,24 +92,35 @@ railing_width = 375
 railing_height = 1100
 rail_count = 3
 
+# STIFFENER PARAMETERS 
+stiffener_width     = 200      
+stiffener_length    = 300     
+
+
+
 # COLORS
 COLOR_GIRDER        = (72/255, 72/255, 54/255)
 COLOR_DECK          = (0.7, 0.7, 0.7)
-texture_color = Quantity_Color(0.30, 0.30, 0.30, Quantity_TOC_RGB)
+texture_color =  Quantity_Color(0.30, 0.30, 0.30, Quantity_TOC_RGB)
 COLOR_CROSS_BRACING =  (95/255, 85/255, 110/255)      #(134/255, 134/255, 100/255)
 COLOR_CRASH_BARRIER = (83/255, 83/255, 83/255)
 COLOR_RAILING       = (0.2, 0.2, 0.2)
+COLOR_STIFFENER = (30/255, 30/255, 30/255)
+
+
 
 
 def build_girders():
     """
     Builds girders symmetrically across the centerline.
-    Girder positions are INDEPENDENT of footpath/crash barrier configuration.
     """
     girders = []
+    stiffeners = []
     total_width = (num_girders - 1) * girder_spacing
 
     for i in range(num_girders):
+
+        # 1. Create I-girder 
         girder = create_i_section(
             span_length_L,
             girder_section_bf,
@@ -114,7 +129,21 @@ def build_girders():
             girder_section_tw
         )
 
-        # Symmetric placement from centerline
+       
+        
+        left_stiff, right_stiff = create_girder_stiffeners(
+            girder_depth=girder_section_d,
+            girder_flange_width=girder_section_bf,
+            girder_web_thickness=girder_section_tw,
+            girder_flange_thickness=girder_section_tf,
+            stiffener_width=stiffener_width,
+            stiffener_length=stiffener_length,
+            x_offset=+span_length_L-stiffener_length
+        )
+
+        stiffeners.extend([left_stiff, right_stiff])
+
+        # 3. Move girder to correct Y position
         y_offset = (i * girder_spacing) - (total_width / 2)
 
         trsf = gp_Trsf()
@@ -123,7 +152,12 @@ def build_girders():
         moved_girder = BRepBuilderAPI_Transform(girder, trsf).Shape()
         girders.append(moved_girder)
 
-    return girders
+        # Move stiffeners WITH girder
+        stiffeners[-2] = BRepBuilderAPI_Transform(left_stiff, trsf).Shape()
+        stiffeners[-1] = BRepBuilderAPI_Transform(right_stiff, trsf).Shape()
+
+    return girders, stiffeners
+
 
 
 def calculate_deck_width(footpath_config):
@@ -528,14 +562,15 @@ def display_colored(display, shape, rgb):
 
 def assemble_bridge():
     """Assembles all bridge components"""
-    girders = build_girders()
+    girders, stiffeners = build_girders()
     cross_bracings = build_cross_bracing()
     deck = build_deck()
     deck_top_z = girder_section_d + deck_thickness
     crash_barriers = build_crash_barrier(deck_top_z)
     railings = build_railing(deck_top_z)
 
-    return girders, cross_bracings, deck, crash_barriers, railings
+    return girders, stiffeners, cross_bracings, deck, crash_barriers, railings
+
 
 
 def main():
@@ -576,11 +611,14 @@ def main():
     display, start_display, add_menu, add_function_to_menu = init_display()
 
     # Assemble bridge components
-    girders, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
+    girders, stiffeners, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
 
     # Display girders
     for g in girders:
         display_colored(display, g, COLOR_GIRDER)
+
+    for s in stiffeners:
+        display_colored(display, s, COLOR_STIFFENER)
 
     # Display cross bracings
     for cb in cross_bracings:

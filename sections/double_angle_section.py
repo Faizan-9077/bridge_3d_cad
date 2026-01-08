@@ -17,66 +17,40 @@ def create_double_angle_section(
     """
     Double angle (⅃L) section.
 
+    Geometry convention:
+    - Length  : +X
+    - Width   : ±Y
+    - Height  : +Z
+    - Origin  : bounding-box center
+
+    connection_type:
     - LONGER_LEG  : longer legs connected back-to-back
     - SHORTER_LEG : shorter legs connected back-to-back
-
-    Inner faces are explicitly aligned → NO GAP possible.
     """
 
+    base = create_angle_section(length, leg_h, leg_w, thickness)
 
-    # Base angle (L)
-    base = create_angle_section(
-        length=length,
-        leg_h=leg_h,
-        leg_w=leg_w,
-        thickness=thickness
-    )
-
- 
-    # Mirror about YZ plane
+    # Mirror to form ⅃
     mirror = gp_Trsf()
-    mirror.SetMirror(
-        gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0))
-    )
+    mirror.SetMirror(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0)))
     mirrored = BRepBuilderAPI_Transform(base, mirror, True).Shape()
 
-
-    # Decide which leg is CONNECTED
-
+    # Decide spacing
     if connection_type == "LONGER_LEG":
-        connected_leg = leg_h
+        offset = leg_h / 2
     elif connection_type == "SHORTER_LEG":
-        connected_leg = leg_w
+        offset = leg_w / 2
     else:
         raise ValueError("Invalid connection_type")
 
-    #  FORCE INNER FACES TO MEET AT Y = 0
-    # Inner face of leg is always at:
-    # (connected_leg / 2) - thickness
-    inner_face_offset = (connected_leg / 2) - thickness
+    # Translate symmetrically
+    trsf_pos = gp_Trsf()
+    trsf_pos.SetTranslation(gp_Vec(0, +offset, 0))
 
-    # Vertical centering (unchanged, stable)
-    z_shift = -(connected_leg / 2 + thickness / 2)
+    trsf_neg = gp_Trsf()
+    trsf_neg.SetTranslation(gp_Vec(0, -offset, 0))
 
-    # Apply transforms
+    a1 = BRepBuilderAPI_Transform(base, trsf_pos, True).Shape()
+    a2 = BRepBuilderAPI_Transform(mirrored, trsf_neg, True).Shape()
 
-    # Mirrored ⅃ → inner face to -Y
-    trsf_m = gp_Trsf()
-    trsf_m.SetTranslation(
-        gp_Vec(0, -inner_face_offset, z_shift)
-    )
-    mirrored = BRepBuilderAPI_Transform(
-        mirrored, trsf_m, True
-    ).Shape()
-
-    # Normal L → inner face to +Y
-    trsf_n = gp_Trsf()
-    trsf_n.SetTranslation(
-        gp_Vec(0, inner_face_offset, z_shift)
-    )
-    normal = BRepBuilderAPI_Transform(
-        base, trsf_n, True
-    ).Shape()
-
-    # Fuse → SINGLE solid
-    return BRepAlgoAPI_Fuse(mirrored, normal).Shape()
+    return BRepAlgoAPI_Fuse(a1, a2).Shape()

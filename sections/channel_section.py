@@ -8,12 +8,16 @@ from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 
 def create_channel_section(length, depth, flange_width, web_thickness, flange_thickness):
     """
-    Channel (C) section whose centroid is at origin (BOX-compatible).
-    
+    Channel (C) section with bounding-box centered at origin.
+
     Geometry convention:
     - Length along +X
     - Web vertical (Z)
-    - Flanges along Y
+    - Flanges along ±Y
+
+    NOTE:
+    - Geometry is NOT centroid-centered
+    - Centroid handling belongs to analysis / OS-DAG layer
     """
 
 

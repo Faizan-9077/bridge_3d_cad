@@ -8,9 +8,14 @@ from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 
 def create_angle_section(length, leg_h, leg_w, thickness):
     """
-    Angle section whose centroid is at origin (box-compatible).
+    Angle section with bounding-box centered at origin.
     Length along +X.
-    """
+
+NOTE:
+- This is NOT centroid-centered
+- Centroid handling must be done at analysis level (OS-DAG)
+"""
+
 
     # Vertical leg
     leg1 = BRepPrimAPI_MakeBox(

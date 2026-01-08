@@ -25,18 +25,20 @@ def create_double_channel_section(
     flange_thickness
 ):
     """
-    Creates a web-connected double channel section.
+    Double channel (][) section.
 
-    Geometry rules:
-    - Channel length along +X
-    - Webs touch at Y = 0
-    - Channels open outward
+    Geometry convention:
+    - Length : +X
+    - Width  : ±Y
+    - Height : +Z
+    - Origin : bounding-box center
+
+    NOTE:
+    - Geometry is bounding-box centered
+    - NOT centroid-centered
     """
 
-
-    # 1. Base channel (opens +Y)
-
-    normal = create_channel_section(
+    base = create_channel_section(
         length=length,
         depth=depth,
         flange_width=flange_width,
@@ -44,41 +46,21 @@ def create_double_channel_section(
         flange_thickness=flange_thickness
     )
 
-  
-    # 2. Mirror channel (opens -Y)
+    # Mirror one channel
+    mirror = gp_Trsf()
+    mirror.SetMirror(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0)))
+    mirrored = BRepBuilderAPI_Transform(base, mirror, True).Shape()
 
-    mirror_trsf = gp_Trsf()
-    mirror_trsf.SetMirror(
-        gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0))
-    )
+    # Move channels so webs meet at Y = 0
+    offset = flange_width / 2
 
-    mirrored = BRepBuilderAPI_Transform(
-        normal, mirror_trsf, True
-    ).Shape()
+    trsf_pos = gp_Trsf()
+    trsf_pos.SetTranslation(gp_Vec(0, +offset, 0))
 
+    trsf_neg = gp_Trsf()
+    trsf_neg.SetTranslation(gp_Vec(0, -offset, 0))
 
-    # 3. Move channels so WEB faces meet at Y = 0
+    c1 = BRepBuilderAPI_Transform(base, trsf_pos, True).Shape()
+    c2 = BRepBuilderAPI_Transform(mirrored, trsf_neg, True).Shape()
 
-    y_web_face = -flange_width / 2 + web_thickness
-
-    # Normal channel → right side
-    trsf_normal = gp_Trsf()
-    trsf_normal.SetTranslation(gp_Vec(0, -y_web_face, 0))
-    normal = BRepBuilderAPI_Transform(
-        normal, trsf_normal, True
-    ).Shape()
-
-    # Mirrored channel → left side
-    trsf_mirror = gp_Trsf()
-    trsf_mirror.SetTranslation(gp_Vec(0, +y_web_face, 0))
-    mirrored = BRepBuilderAPI_Transform(
-        mirrored, trsf_mirror, True
-    ).Shape()
-
-    # 4. Fuse into single solid
-
-    section = BRepAlgoAPI_Fuse(
-        normal, mirrored
-    ).Shape()
-
-    return section
+    return BRepAlgoAPI_Fuse(c1, c2).Shape()
