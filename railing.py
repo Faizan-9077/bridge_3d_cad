@@ -86,7 +86,7 @@ def create_railing(
         hole = translate(
             hole,
             x=(length - hole_length) / 2,   # center in X
-            y=(width  - hole_width)  / 2 + y_offset,   # center in Y
+            y=(width  - hole_width)  / 2 + y_offset,   
             z=z_center - hole_height / 2    # center in Z
         )
 
