@@ -14,8 +14,6 @@ from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Fuse
 
 
 from deck import create_deck_slab
-from deck_texture import generate_deck_texture
-from deck_texture import shift_texture_to_center
 from deck_texture import place_deck_texture
 from draw_i_section import create_i_section
 from validation import validate_bridge_inputs
@@ -25,15 +23,13 @@ from cross_bracing import (
     create_k_bracing_between_girders
 )
 from crash_barriers import place_crash_barrier, create_crash_barrier_left, create_crash_barrier_right
-from sections.section_database import ISA_SECTIONS
 from sections.section_database import get_section_props
 from sections.stiffener_plate import create_girder_stiffeners
+from median.median_barrier import create_median_barriers
 
 
 
-# =====================
 # PARAMETERS (mm)
-# =====================
 
 # girders parameters
 span_length_L = 25000
@@ -65,8 +61,8 @@ x_bracket_option = "BOTH"
 k_top_bracket = True
 
 
-cross_bracing_section_type = "DOUBLE_ANGLE"
-cross_bracing_section_name = "ISA_90x60x6"
+cross_bracing_section_type = "DOUBLE_CHANNEL"
+cross_bracing_section_name = "ISMC_100"
 
 # Only used if section type is DOUBLE_ANGLE
 cross_bracing_connection = "LONGER_LEG"
@@ -94,7 +90,14 @@ rail_count = 3
 
 # STIFFENER PARAMETERS 
 stiffener_width     = 200      
-stiffener_length    = 300     
+stiffener_length    = 10     
+
+# MEDIAN PARAMETERS 
+
+median_gap = 800           
+median_offset_z = deck_thickness  # sits on deck
+
+enable_median = False
 
 
 
@@ -112,7 +115,8 @@ COLOR_STIFFENER = (30/255, 30/255, 30/255)
 
 def build_girders():
     """
-    Builds girders symmetrically across the centerline.
+    Builds girders symmetrically across the centerline
+    and adds stiffeners at BOTH ends of the span.
     """
     girders = []
     stiffeners = []
@@ -120,7 +124,7 @@ def build_girders():
 
     for i in range(num_girders):
 
-        # 1. Create I-girder 
+        #  Create I-girder
         girder = create_i_section(
             span_length_L,
             girder_section_bf,
@@ -129,19 +133,33 @@ def build_girders():
             girder_section_tw
         )
 
-       
-        
-        left_stiff, right_stiff = create_girder_stiffeners(
+        #  STIFFENERS AT START (x = 0)
+        start_left, start_right = create_girder_stiffeners(
             girder_depth=girder_section_d,
             girder_flange_width=girder_section_bf,
             girder_web_thickness=girder_section_tw,
             girder_flange_thickness=girder_section_tf,
             stiffener_width=stiffener_width,
             stiffener_length=stiffener_length,
-            x_offset=+span_length_L-stiffener_length
+            x_offset=0.0
         )
 
-        stiffeners.extend([left_stiff, right_stiff])
+        #  STIFFENERS AT END (x = L - stiffener_length) 
+        end_left, end_right = create_girder_stiffeners(
+            girder_depth=girder_section_d,
+            girder_flange_width=girder_section_bf,
+            girder_web_thickness=girder_section_tw,
+            girder_flange_thickness=girder_section_tf,
+            stiffener_width=stiffener_width,
+            stiffener_length=stiffener_length,
+            x_offset=span_length_L - stiffener_length
+        )
+
+        # Collect all 4
+        local_stiffeners = [
+            start_left, start_right,
+            end_left, end_right
+        ]
 
         # 3. Move girder to correct Y position
         y_offset = (i * girder_spacing) - (total_width / 2)
@@ -152,9 +170,11 @@ def build_girders():
         moved_girder = BRepBuilderAPI_Transform(girder, trsf).Shape()
         girders.append(moved_girder)
 
-        # Move stiffeners WITH girder
-        stiffeners[-2] = BRepBuilderAPI_Transform(left_stiff, trsf).Shape()
-        stiffeners[-1] = BRepBuilderAPI_Transform(right_stiff, trsf).Shape()
+        # Move ALL stiffeners with girder
+        for stiff in local_stiffeners:
+            stiffeners.append(
+                BRepBuilderAPI_Transform(stiff, trsf).Shape()
+            )
 
     return girders, stiffeners
 
@@ -264,30 +284,6 @@ def build_cross_bracing():
                 )
 
     return cross_bracings
-
-def calculate_deck_width(footpath_config):
-    """
-    Calculates total deck width based on footpath configuration.
-    
-    Returns:
-    --------
-    total_deck_width : float
-    """
-    
-    if footpath_config == "NONE":
-        # carriageway + 2 × crash_barrier_base_width
-        return carriageway_width + 2 * crash_barrier_base_width
-    
-    elif footpath_config == "LEFT" or footpath_config == "RIGHT":
-        # carriageway + 2 × crash_barrier_base_width + footpath + railing
-        return carriageway_width + 2 * crash_barrier_base_width + footpath_width + railing_width
-    
-    elif footpath_config == "BOTH":
-        # carriageway + 2 × crash_barrier_base_width + 2 × footpath + 2 × railing
-        return carriageway_width + 2 * crash_barrier_base_width + 2 * footpath_width + 2 * railing_width
-    
-    else:
-        raise ValueError(f"Invalid footpath_config: {footpath_config}")
 
 
 def calculate_carriageway_offset(footpath_config):
@@ -569,7 +565,29 @@ def assemble_bridge():
     crash_barriers = build_crash_barrier(deck_top_z)
     railings = build_railing(deck_top_z)
 
-    return girders, stiffeners, cross_bracings, deck, crash_barriers, railings
+    median_barriers = []
+    if enable_median:
+        carriageway_center_y = calculate_carriageway_offset(footpath_config)
+        median_barriers = create_median_barriers(
+            length=span_length_L,
+            barrier_width=crash_barrier_width,
+            barrier_height=crash_barrier_height,
+            barrier_base_width=crash_barrier_base_width,
+            deck_top_z=deck_top_z,
+            carriageway_center_y=carriageway_center_y,
+            median_gap=median_gap
+        )
+
+    return (
+        girders,
+        stiffeners,
+        cross_bracings,
+        deck,
+        crash_barriers,
+        railings,
+        median_barriers
+    )
+
 
 
 
@@ -611,7 +629,16 @@ def main():
     display, start_display, add_menu, add_function_to_menu = init_display()
 
     # Assemble bridge components
-    girders, stiffeners, cross_bracings, deck, crash_barriers, railings = assemble_bridge()
+    (
+        girders,
+        stiffeners,
+        cross_bracings,
+        deck,
+        crash_barriers,
+        railings,
+        median_barriers
+    ) = assemble_bridge()
+
 
     # Display girders
     for g in girders:
@@ -642,17 +669,17 @@ def main():
         display.DisplayShape(s, color=texture_color, update=False)
 
 
-    # --------------------------------------------------
     # Display crash barriers
-    # --------------------------------------------------
     for cb in crash_barriers:
         display_colored(display, cb, COLOR_CRASH_BARRIER)
 
-    # --------------------------------------------------
     # Display railings
-    # --------------------------------------------------
     for r in railings:
         display_colored(display, r, COLOR_RAILING)
+
+    for m in median_barriers:
+        display_colored(display, m, COLOR_CRASH_BARRIER)
+
 
     # Set up arrow key panning
     from PySide6.QtCore import Qt
